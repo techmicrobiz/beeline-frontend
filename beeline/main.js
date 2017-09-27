@@ -20,6 +20,15 @@ var app = angular.module('beeline', [
   'ngclipboard',
 ])
 
+
+app.run(function($rootScope, replace, p) {
+  $rootScope.o = {
+    ...p,
+    replace
+  }
+})
+
+
 require('angular-simple-logger');
 require('angular-google-maps');
 require('clipboard');
@@ -171,12 +180,6 @@ app
     );
   }
  });
-})
-.run(function($rootScope, replace, p) {
-  $rootScope.o = {
-    ...p,
-    replace
-  }
 })
 .run(function($ionicPlatform) {
   $ionicPlatform.ready(function() {
