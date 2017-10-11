@@ -20,6 +20,9 @@ export default function($scope, $state, UserService, RoutesService, $q,
     nearbyKickstarterRoutes: null,
     placeQuery: null, // The place object used to search
     queryText: "", // The actual text in the box used only for the clear button
+    getPlaceDetails: false,
+    prediction: null,
+    minNumRoutes: 3,
   };
 
  //FIXME: put place search into a directive
@@ -51,32 +54,12 @@ export default function($scope, $state, UserService, RoutesService, $q,
       componentRestrictions: {country: 'SG'},
       input: $scope.data.queryText
     }, (predictions) => {
-      // If no results found then just shortcircuit with the empty place
-      if (!predictions || predictions.length === 0) {
-        $scope.data.placeQuery =  place;
-        $scope.data.isFiltering = false;
-        $scope.$digest();
-        return;
-      }
-      // Grab the top prediction and get the details
-      // Apply the details as the full result
-      $scope.placesService.getDetails({
-        placeId: predictions[0].place_id
-      }, result => {
-        // If we fail getting the details then shortcircuit
-        if (!result) {
-          $scope.data.placeQuery =  place;
-          $scope.data.isFiltering = false;
-          $scope.$digest();
-          return;
-        }
-        // Otherwise return the fully formed place
-        place = _.assign(place,result);
-        // Return the found place
-        $scope.data.placeQuery =  place;
-        $scope.data.isFiltering = false;
-        $scope.$digest();
-      });
+      $scope.data.getPlaceDetails = false;
+      $scope.data.prediction = predictions !== null && predictions.length > 0 ? predictions[0] : null;
+      $scope.data.placeQuery =  place;
+      $scope.data.isFiltering = false;
+      $scope.$digest();
+      return;
     })
   }
 
@@ -150,6 +133,9 @@ export default function($scope, $state, UserService, RoutesService, $q,
         // $scope.data.filteredNearbyKickstarterRoutes = SearchService.filterRoutesByText($scope.data.filteredNearbyKickstarterRoutes,  placeQuery.queryText);
         kickstarter = SearchService.filterRoutesByText(kickstarter,  placeQuery.queryText);
         backedKickstarter = SearchService.filterRoutesByText(backedKickstarter,  placeQuery.queryText);
+        if (kickstarter.length < $scope.data.minNumRoutes) {
+          $scope.data.getPlaceDetails = true
+        }
       }
 
 
@@ -159,6 +145,30 @@ export default function($scope, $state, UserService, RoutesService, $q,
 
   });
 
+  $scope.$watch('data.getPlaceDetails', function (newVal, oldVal) {
+    if (newVal && $scope.data.prediction !== null){
+      $scope.placesService.getDetails({
+        placeId: $scope.data.prediction.place_id
+      }, result => {
+        // If we fail getting the details then shortcircuit
+        if (!result) {
+          // $scope.data.placeQuery =  place;
+          $scope.data.isFiltering = false;
+          $scope.$digest();
+          return;
+        }
+        // Otherwise return the fully formed place
+        var place = {
+          ...$scope.data.placeQuery,
+          geometry: result.geometry
+        }
+        // Return the found place
+        $scope.data.placeQuery =  place;
+        $scope.data.isFiltering = false;
+        $scope.$digest();
+      });
+    }
+  });
 
   $scope.showHelpPopup = function(){
     $scope.kickstartHelpPopup = $ionicPopup.show({
